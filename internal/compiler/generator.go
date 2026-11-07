@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/zane-xin/sparq-blade/internal/literal"
 )
 
 /*
@@ -108,7 +109,7 @@ func (i *Generator) writeNode(builder *strings.Builder, node Node) error {
 
 		slotTexts := make(map[string]string, len(value.Slots))
 		for _, slot := range value.Slots {
-			slotName, ok := parseTemplateStringLiteral(slot.Name)
+			slotName, ok := literal.ParseString(slot.Name)
 			if !ok {
 				slotName = slot.Name
 			}
@@ -275,7 +276,7 @@ func parseChildrenCompileSpec(expression string) (childrenCompileSpec, error) {
 		key := strings.TrimSpace(name)
 		switch key {
 		case "wrap":
-			wrap, ok := parseTemplateStringLiteral(value)
+			wrap, ok := literal.ParseString(value)
 			if !ok {
 				return childrenCompileSpec{}, fmt.Errorf("children wrap 必须是字符串字面量: %s", value)
 			}
@@ -284,7 +285,7 @@ func parseChildrenCompileSpec(expression string) (childrenCompileSpec, error) {
 			}
 			spec.Wrap = wrap
 		case "class":
-			className, ok := parseTemplateStringLiteral(value)
+			className, ok := literal.ParseString(value)
 			if !ok {
 				return childrenCompileSpec{}, fmt.Errorf("children class 必须是字符串字面量: %s", value)
 			}
@@ -378,23 +379,6 @@ func (i *Generator) generateNodes(nodes []Node) (string, error) {
 	}
 
 	return builder.String(), nil
-}
-
-func parseTemplateStringLiteral(value string) (string, bool) {
-	value = strings.TrimSpace(value)
-	if len(value) < 2 {
-		return "", false
-	}
-
-	if (value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"') {
-		unquoted, err := strconv.Unquote(`"` + strings.ReplaceAll(value[1:len(value)-1], `"`, `\"`) + `"`)
-		if err != nil {
-			return value[1 : len(value)-1], true
-		}
-		return unquoted, true
-	}
-
-	return "", false
 }
 
 func (i *Generator) loopRangeFunction(node *LoopNode) (string, error) {

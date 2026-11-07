@@ -8,6 +8,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/zane-xin/sparq-blade/internal/literal"
 )
 
 // Function 表示模板表达式可以调用的纯值转换函数。
@@ -21,28 +23,6 @@ var trustedTemplateContentTypes = map[reflect.Type]struct{}{
 	reflect.TypeOf(template.JSStr("")):    {},
 	reflect.TypeOf(template.Srcset("")):   {},
 	reflect.TypeOf(template.URL("")):      {},
-}
-
-/*
-ParseStringLiteral
-解析模板中的字符串字面量。
-仅支持单引号或双引号包裹的形式。
-*/
-func ParseStringLiteral(value string) (string, bool) {
-	value = strings.TrimSpace(value)
-	if len(value) < 2 {
-		return "", false
-	}
-
-	if (value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"') {
-		unquoted, err := strconv.Unquote(`"` + strings.ReplaceAll(value[1:len(value)-1], `"`, `\"`) + `"`)
-		if err != nil {
-			return value[1 : len(value)-1], true
-		}
-		return unquoted, true
-	}
-
-	return "", false
 }
 
 /*
@@ -351,7 +331,7 @@ func (p *expressionParser) parsePrimary() (any, error) {
 		return value, nil
 	case exprTokenString:
 		p.advance()
-		value, _ := ParseStringLiteral(token.literal)
+		value, _ := literal.ParseString(token.literal)
 		return value, nil
 	case exprTokenNumber:
 		p.advance()
@@ -737,7 +717,7 @@ func parseChildren(expression string) (*childrenSpec, error) {
 			}
 			spec.ItemAlias = alias
 		case "field":
-			field, ok := ParseStringLiteral(value)
+			field, ok := literal.ParseString(value)
 			if !ok {
 				field = value
 			}
@@ -768,13 +748,13 @@ func parseEach(expression string) (*eachSpec, error) {
 		return nil, fmt.Errorf("each 表达式格式非法: %s", expression)
 	}
 
-	view, ok := ParseStringLiteral(strings.TrimSpace(parts[0]))
+	view, ok := literal.ParseString(strings.TrimSpace(parts[0]))
 	if !ok {
 		return nil, fmt.Errorf("each 视图名必须是字符串字面量: %s", parts[0])
 	}
 
 	aliasPart := strings.TrimSpace(parts[2])
-	alias, ok := ParseStringLiteral(aliasPart)
+	alias, ok := literal.ParseString(aliasPart)
 	if !ok {
 		alias, err = normalizeAlias(aliasPart)
 		if err != nil {
@@ -792,7 +772,7 @@ func parseEach(expression string) (*eachSpec, error) {
 	}
 
 	if len(parts) == 4 {
-		emptyView, ok := ParseStringLiteral(strings.TrimSpace(parts[3]))
+		emptyView, ok := literal.ParseString(strings.TrimSpace(parts[3]))
 		if !ok {
 			return nil, fmt.Errorf("each empty 视图名必须是字符串字面量: %s", parts[3])
 		}
@@ -867,7 +847,7 @@ func parseTag(expression string) (*tagSpec, error) {
 	if targetExpression == "" {
 		return nil, fmt.Errorf("tag 缺少目标标识: %s", expression)
 	}
-	if _, ok := ParseStringLiteral(targetExpression); !ok {
+	if _, ok := literal.ParseString(targetExpression); !ok {
 		return nil, fmt.Errorf("tag 目标必须是字符串字面量: %s", targetExpression)
 	}
 
@@ -901,7 +881,7 @@ func parseFlexibleTag(expression string) (*tagSpec, error) {
 
 	offset := 0
 	targetExpression := ""
-	if _, ok := ParseStringLiteral(first); ok {
+	if _, ok := literal.ParseString(first); ok {
 		targetExpression = first
 		offset = 1
 	} else if _, _, ok := splitTopLevelFirst(first, '='); !ok && first != "out" {

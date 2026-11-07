@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/zane-xin/sparq-blade/internal/compiler"
+	"github.com/zane-xin/sparq-blade/internal/literal"
 	bladeRuntime "github.com/zane-xin/sparq-blade/internal/runtime"
 )
 
@@ -86,7 +87,7 @@ func collectSections(document *compiler.Document) map[string]*compiler.SectionNo
 			continue
 		}
 
-		name, ok := bladeRuntime.ParseStringLiteral(section.Name)
+		name, ok := literal.ParseString(section.Name)
 		if !ok {
 			name = section.Name
 		}
@@ -133,7 +134,7 @@ func resolveNode(node compiler.Node, overrides map[string]*compiler.SectionNode)
 	case *compiler.ExtendsNode:
 		return nil, nil
 	case *compiler.SectionNode:
-		name, ok := bladeRuntime.ParseStringLiteral(item.Name)
+		name, ok := literal.ParseString(item.Name)
 		if !ok {
 			name = item.Name
 		}
@@ -144,7 +145,7 @@ func resolveNode(node compiler.Node, overrides map[string]*compiler.SectionNode)
 
 		return applySections(item.Body, overrides)
 	case *compiler.YieldNode:
-		name, ok := bladeRuntime.ParseStringLiteral(item.Target)
+		name, ok := literal.ParseString(item.Target)
 		if !ok {
 			name = item.Target
 		}
